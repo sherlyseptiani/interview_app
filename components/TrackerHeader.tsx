@@ -8,8 +8,6 @@ type TrackerHeaderProps = Readonly<{
   nowMs: number;
   onStartDateChange: (value: string) => void;
   onToday: () => void;
-  onExport: () => void;
-  onImport: () => void;
   theme: ThemeMode;
   onThemeToggle: () => void;
   onReset: () => void;
@@ -28,7 +26,7 @@ function pluralDays(value: number): string {
   return `${value} day${value === 1 ? "" : "s"}`;
 }
 
-export function TrackerHeader({ state, nowMs, onStartDateChange, onToday, onExport, onImport, theme, onThemeToggle, onReset }: TrackerHeaderProps) {
+export function TrackerHeader({ state, nowMs, onStartDateChange, onToday, theme, onThemeToggle, onReset }: TrackerHeaderProps) {
   const completed = TASKS.filter((task) => ensureDay(state, task.id).completed).length;
   const streaks = calculateStreaks(state);
   const focusSeconds = totalElapsed(state, nowMs);
@@ -76,8 +74,6 @@ export function TrackerHeader({ state, nowMs, onStartDateChange, onToday, onExpo
               <input id="startDate" type="date" value={state.startDate} onChange={(event) => onStartDateChange(event.currentTarget.value)} />
             </div>
             <button className="btn primary" type="button" onClick={onToday}>Open today&apos;s task</button>
-            <button className="btn" type="button" onClick={onExport}>Export progress</button>
-            <button className="btn" type="button" onClick={onImport}>Import progress</button>
             <button className="btn theme-toggle" type="button" aria-label={`Switch to ${nextTheme} theme`} onClick={onThemeToggle}>
               {nextTheme === "light" ? "Light" : "Dark"} theme
             </button>

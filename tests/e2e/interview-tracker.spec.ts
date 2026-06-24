@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { STORAGE_KEY } from "../../lib/interview-plan";
 import { THEME_STORAGE_KEY } from "../../lib/theme";
 
 function monthLabel(monthOffset: number): string {
@@ -10,10 +9,9 @@ function monthLabel(monthOffset: number): string {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(({ storageKey, themeStorageKey }) => {
-    window.localStorage.removeItem(storageKey);
+  await page.addInitScript((themeStorageKey) => {
     window.localStorage.setItem(themeStorageKey, "dark");
-  }, { storageKey: STORAGE_KEY, themeStorageKey: THEME_STORAGE_KEY });
+  }, THEME_STORAGE_KEY);
 });
 
 test("renders the tracker and exercises core daily controls", async ({ page }) => {

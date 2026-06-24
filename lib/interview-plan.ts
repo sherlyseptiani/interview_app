@@ -1,4 +1,3 @@
-export const STORAGE_KEY = 'sherlyTechnicalInterviewSprintV2';
 export const TARGET_SECONDS = 60 * 60;
 
 export const CATEGORIES = [

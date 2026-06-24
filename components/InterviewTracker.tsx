@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TASK_IDS, taskById, type FilterValue } from "../lib/interview-plan";
-import { parseStorageJson } from "../lib/storage-schema";
 import { isThemeMode, THEME_COLORS, THEME_STORAGE_KEY, type ThemeMode } from "../lib/theme";
 import {
   addElapsedMinutes,
@@ -14,7 +13,6 @@ import {
   elapsedSeconds,
   ensureDay,
   initialState,
-  pauseAllExcept,
   pauseDay,
   reopenDay,
   resetDayTimer,
@@ -36,9 +34,9 @@ import {
   CONFETTI_MS,
   TOAST_MS,
   createConfettiPieces,
-  downloadStateExport,
-  loadStoredState,
-  writeStoredState,
+  loadProgressState,
+  saveProgressState,
+  sendProgressBeacon,
   type ConfettiPiece,
 } from "./tracker-browser";
 import { calendarMonthStartISO, classNames, type ToastState } from "./tracker-types";
@@ -88,7 +86,8 @@ export function InterviewTracker() {
   const autosaveTimerRef = useRef<number | null>(null);
   const confettiTimerRef = useRef<number | null>(null);
   const confettiIdRef = useRef(1);
-  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingSaveRef = useRef<TrackerState | null>(null);
+  const saveInFlightRef = useRef(false);
 
   const showToast = useCallback((message: string) => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
@@ -98,12 +97,26 @@ export function InterviewTracker() {
     }, TOAST_MS);
   }, []);
 
+  const queueProgressSave = useCallback((nextState: TrackerState) => {
+    pendingSaveRef.current = nextState;
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    void (async () => {
+      while (pendingSaveRef.current !== null) {
+        const stateToSave = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        await saveProgressState(stateToSave);
+      }
+      saveInFlightRef.current = false;
+    })();
+  }, []);
+
   const commitState = useCallback((nextState: TrackerState, message?: string) => {
     stateRef.current = nextState;
     setState(nextState);
-    const saved = writeStoredState(nextState);
-    if (message !== undefined) showToast(saved ? message : "Progress is in memory; browser storage is unavailable");
-  }, [showToast]);
+    queueProgressSave(nextState);
+    if (message !== undefined) showToast(message);
+  }, [queueProgressSave, showToast]);
 
   const triggerConfetti = useCallback(() => {
     const baseId = confettiIdRef.current;
@@ -114,18 +127,26 @@ export function InterviewTracker() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const hydrationTimer = window.setTimeout(() => {
       const preferredTheme = readThemePreference();
-      const stored = loadStoredState();
       applyTheme(preferredTheme);
       setTheme(preferredTheme);
-      stateRef.current = stored;
-      setState(stored);
-      setNowMs(Date.now());
-      setIsHydrated(true);
+      void (async () => {
+        const stored = await loadProgressState();
+        if (cancelled) return;
+        stateRef.current = stored.state;
+        setState(stored.state);
+        setNowMs(Date.now());
+        setIsHydrated(true);
+        if (!stored.configured) showToast("Supabase is not configured; progress is in memory for this session.");
+      })();
     }, 0);
-    return () => window.clearTimeout(hydrationTimer);
-  }, []);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(hydrationTimer);
+    };
+  }, [showToast]);
 
   useEffect(() => {
     stateRef.current = state;
@@ -136,15 +157,15 @@ export function InterviewTracker() {
       const nextNow = Date.now();
       setNowMs(nextNow);
       if (TASK_IDS.some((id) => ensureDay(stateRef.current, id).runningSince !== null) && nextNow % 5000 < 1100) {
-        writeStoredState(stateRef.current);
+        queueProgressSave(stateRef.current);
       }
     }, 1000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [queueProgressSave]);
 
   useEffect(() => {
     const saveBeforeUnload = () => {
-      writeStoredState(stateRef.current);
+      if (!sendProgressBeacon(stateRef.current)) void saveProgressState(stateRef.current);
     };
     window.addEventListener("beforeunload", saveBeforeUnload);
     return () => window.removeEventListener("beforeunload", saveBeforeUnload);
@@ -175,8 +196,8 @@ export function InterviewTracker() {
     stateRef.current = nextState;
     setState(nextState);
     if (autosaveTimerRef.current !== null) window.clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = window.setTimeout(() => writeStoredState(stateRef.current), 250);
-  }, []);
+    autosaveTimerRef.current = window.setTimeout(() => queueProgressSave(stateRef.current), 250);
+  }, [queueProgressSave]);
 
   const handleTimerToggle = useCallback(() => {
     const id = stateRef.current.selectedId;
@@ -198,13 +219,6 @@ export function InterviewTracker() {
     triggerConfetti();
   }, [commitState, triggerConfetti]);
 
-  const handleExport = useCallback(() => {
-    const nextState = pauseAllExcept(stateRef.current, null);
-    commitState(nextState);
-    downloadStateExport(nextState);
-    showToast("Progress exported");
-  }, [commitState, showToast]);
-
   const handleThemeToggle = useCallback(() => {
     const nextTheme = theme === "dark" ? "light" : "dark";
     applyTheme(nextTheme);
@@ -213,22 +227,6 @@ export function InterviewTracker() {
     showToast(`${nextTheme === "dark" ? "Dark" : "Light"} theme enabled`);
   }, [showToast, theme]);
 
-  const handleImportChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
-    const input = event.currentTarget;
-    const file = input.files === null ? null : input.files.item(0);
-    if (file === null) return;
-    try {
-      const result = parseStorageJson(await file.text());
-      if (result.ok) commitState(result.state, "Progress imported");
-      else window.alert("That file is not a valid progress export.");
-    } catch (error) {
-      if (error instanceof DOMException) window.alert("That file could not be read.");
-      else throw error;
-    } finally {
-      input.value = "";
-    }
-  }, [commitState]);
-
   if (!isHydrated) {
     return (
       <div className="shell">
@@ -236,7 +234,7 @@ export function InterviewTracker() {
           <section className="hero glass" aria-busy="true">
             <span className="eyebrow">Preparing tracker</span>
             <h1>Sherly&apos;s Technical Interview Sprint</h1>
-            <p>Loading saved progress, notes, timers, and streaks from this browser.</p>
+            <p>Loading saved progress, notes, timers, and streaks from Supabase.</p>
           </section>
         </header>
       </div>
@@ -256,12 +254,10 @@ export function InterviewTracker() {
             setVisibleMonthStart(calendarMonthStartISO());
             selectDay(currentTaskForToday(stateRef.current), true);
           }}
-          onExport={handleExport}
-          onImport={() => importInputRef.current?.click()}
           theme={theme}
           onThemeToggle={handleThemeToggle}
           onReset={() => {
-            if (window.confirm("Reset all progress, notes, timers, and streaks? This cannot be undone unless you exported a backup.")) {
+            if (window.confirm("Reset all progress, notes, timers, and streaks? This cannot be undone.")) {
               commitState(initialState(), "Tracker reset");
             }
           }}
@@ -300,7 +296,6 @@ export function InterviewTracker() {
         <PlanSection state={state} nowMs={nowMs} onFilterChange={(filter: FilterValue) => commitState(setFilter(stateRef.current, filter))} onSelectDay={selectDay} />
         <footer>Built for one focused hour a day. Consistency beats cramming.</footer>
       </div>
-      <input ref={importInputRef} type="file" accept="application/json" hidden onChange={handleImportChange} />
       <div className={classNames(["toast", toast.visible ? "show" : ""])} role="status" aria-live="polite">{toast.message}</div>
       <div className="celebrate">
         {confetti.map((piece) => <i className="confetti" key={piece.id} style={{ left: piece.left, background: piece.color, animationDelay: piece.delay }} />)}

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  STORAGE_KEY,
   TASKS,
   TARGET_SECONDS,
   taskById,
@@ -49,7 +48,7 @@ const EMPTY_DAY: DayState = {
 };
 
 describe("interview plan contract", () => {
-  it("preserves the legacy task count, order, and storage key", () => {
+  it("preserves the task count and order", () => {
     // Given
     const firstTask = taskById(1);
     const finalTask = taskById(42);
@@ -58,7 +57,6 @@ describe("interview plan contract", () => {
     const ids = TASKS.map((task) => task.id);
 
     // Then
-    expect(STORAGE_KEY).toBe("sherlyTechnicalInterviewSprintV2");
     expect(TASKS).toHaveLength(42);
     expect(ids).toEqual(Array.from({ length: 42 }, (_value, index) => index + 1));
     expect(firstTask.title).toBe("Restart JavaScript and solve Two Sum");

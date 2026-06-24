@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { STORAGE_KEY } from "../lib/interview-plan";
 import { ensureDay, initialState } from "../lib/tracker-state";
 import { parseStorageJson, parseStoragePayload } from "../lib/storage-schema";
 
 describe("storage schema parsing", () => {
-  it("accepts wrapped legacy exports and normalizes every task day", () => {
+  it("accepts wrapped state payloads and normalizes every task day", () => {
     // Given
     const payload = {
       app: "Sherly Technical Interview Sprint",
@@ -81,10 +80,5 @@ describe("storage schema parsing", () => {
     expect(dateResult).toEqual({ ok: false, error: { kind: "invalid_start_date", message: "Invalid startDate" } });
     expect(daysResult).toEqual({ ok: false, error: { kind: "invalid_days", message: "Invalid days" } });
     expect(jsonResult).toEqual({ ok: false, error: { kind: "invalid_json", message: "Invalid JSON" } });
-  });
-
-  it("keeps the legacy storage key exported with the schema", () => {
-    // Given / When / Then
-    expect(STORAGE_KEY).toBe("sherlyTechnicalInterviewSprintV2");
   });
 });

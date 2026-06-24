@@ -1,6 +1,6 @@
-import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR, STORAGE_KEY } from "../lib/interview-plan";
-import { parseStorageJson } from "../lib/storage-schema";
-import { initialState, localISO, type TrackerState } from "../lib/tracker-state";
+import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR } from "../lib/interview-plan";
+import { parseStoragePayload } from "../lib/storage-schema";
+import { initialState, type TrackerState } from "../lib/tracker-state";
 
 const CONFETTI_COLORS = [
   CATEGORY_COLORS.Coding,
@@ -21,26 +21,43 @@ export type ConfettiPiece = Readonly<{
   color: string;
 }>;
 
-export function loadStoredState(): TrackerState {
+type LoadProgressResult = Readonly<{
+  configured: boolean;
+  state: TrackerState;
+}>;
+
+export async function loadProgressState(): Promise<LoadProgressResult> {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return initialState();
-    const parsed = parseStorageJson(raw);
-    return parsed.ok ? parsed.state : initialState();
-  } catch (error) {
-    if (error instanceof DOMException) return initialState();
-    throw error;
+    const response = await fetch("/api/progress", { cache: "no-store" });
+    if (!response.ok) return { configured: true, state: initialState() };
+    const payload: unknown = await response.json();
+    const configured = typeof payload === "object" && payload !== null && "configured" in payload && payload.configured === true;
+    const statePayload = typeof payload === "object" && payload !== null && "state" in payload ? payload.state : payload;
+    const parsed = parseStoragePayload(statePayload);
+    return { configured, state: parsed.ok ? parsed.state : initialState() };
+  } catch {
+    return { configured: true, state: initialState() };
   }
 }
 
-export function writeStoredState(state: TrackerState): boolean {
+export async function saveProgressState(state: TrackerState): Promise<boolean> {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    return true;
-  } catch (error) {
-    if (error instanceof DOMException) return false;
-    throw error;
+    const response = await fetch("/api/progress", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state),
+    });
+    if (!response.ok) return false;
+    const payload: unknown = await response.json();
+    return typeof payload === "object" && payload !== null && "ok" in payload && payload.ok === true;
+  } catch {
+    return false;
   }
+}
+
+export function sendProgressBeacon(state: TrackerState): boolean {
+  if (typeof navigator.sendBeacon !== "function") return false;
+  return navigator.sendBeacon("/api/progress", new Blob([JSON.stringify(state)], { type: "application/json" }));
 }
 
 function confettiColor(index: number): string {
@@ -54,15 +71,4 @@ export function createConfettiPieces(baseId: number): readonly ConfettiPiece[] {
     delay: `${Math.random() * 0.25}s`,
     color: confettiColor(index),
   }));
-}
-
-export function downloadStateExport(state: TrackerState): void {
-  const blob = new Blob([JSON.stringify({ app: "Sherly Technical Interview Sprint", exportedAt: new Date().toISOString(), state }, null, 2)], {
-    type: "application/json",
-  });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `sherly-interview-progress-${localISO()}.json`;
-  link.click();
-  URL.revokeObjectURL(link.href);
 }

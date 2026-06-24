@@ -72,7 +72,7 @@ export function PlanSection({ state, nowMs, onFilterChange, onSelectDay }: PlanS
           );
         })}
       </div>
-      <p className="data-note">Progress is stored locally in this browser. Export a backup weekly, especially before moving to another device.</p>
+      <p className="data-note">Progress is saved to Supabase when server persistence is configured.</p>
     </section>
   );
 }
