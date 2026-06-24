@@ -257,6 +257,7 @@
     html[data-theme="light"] .btn{background:rgba(255,255,255,.74);box-shadow:inset 0 1px 0 rgba(255,255,255,.76),0 8px 22px rgba(86,66,34,.10)}html[data-theme="light"] .btn:hover{border-color:rgba(166,109,19,.28);background:rgba(255,255,255,.92)}html[data-theme="light"] .btn.soft{border-color:rgba(56,111,208,.16);color:#275ba9;background:rgba(56,111,208,.08)}html[data-theme="light"] .btn.danger{border-color:rgba(201,63,77,.16);color:#aa2f3a;background:rgba(201,63,77,.07)}html[data-theme="light"] .theme-toggle::before{background:#386fd0;box-shadow:0 0 14px rgba(56,111,208,.38)}
     html[data-theme="light"] .badge{border-color:rgba(134,94,31,.13);color:#334055;background:rgba(255,255,255,.70)}html[data-theme="light"] .category-badge{color:white}html[data-theme="light"] .check-row,html[data-theme="light"] .gate-row,html[data-theme="light"] .month,html[data-theme="light"] .day-card{border-color:rgba(134,94,31,.12);background:rgba(255,255,255,.64)}html[data-theme="light"] .check-row:hover,html[data-theme="light"] .day-card:hover{border-color:rgba(166,109,19,.24);background:rgba(255,255,255,.86)}html[data-theme="light"] .check-row.done,html[data-theme="light"] .day-card.complete{border-color:rgba(22,137,81,.18);background:rgba(22,137,81,.08)}html[data-theme="light"] .check-text{color:#293349}html[data-theme="light"] .minutes{border-color:rgba(166,109,19,.18);color:#8b5a0d;background:rgba(166,109,19,.08)}
     html[data-theme="light"] .resource{border-color:rgba(56,111,208,.16);color:#275ba9;background:rgba(56,111,208,.08)}html[data-theme="light"] .tips{border-color:rgba(166,109,19,.14);background:linear-gradient(135deg,rgba(244,211,131,.24),rgba(114,80,191,.08)),rgba(255,255,255,.56)}html[data-theme="light"] .tips ul{color:#39445a}html[data-theme="light"] .timer-ring{border-color:rgba(166,109,19,.22);background:conic-gradient(var(--champagne) var(--timer-progress,0deg),rgba(166,109,19,.12) 0);box-shadow:0 0 36px rgba(166,109,19,.14),inset 0 0 0 1px rgba(255,255,255,.80)}html[data-theme="light"] .timer-ring::before{border-color:rgba(134,94,31,.10);background:radial-gradient(circle,rgba(255,255,255,.98),rgba(248,250,252,.98));box-shadow:inset 0 0 28px rgba(56,111,208,.08)}html[data-theme="light"] .timer-ring::after{background:repeating-conic-gradient(from -1deg,rgba(166,109,19,.26) 0 1deg,transparent 1deg 12deg)}
+    .cal-day.idle{border-color:transparent!important;background:transparent!important}.cal-day.idle:hover{border-color:var(--accent-line,rgba(244,211,131,.24))!important;background:var(--card-2,rgba(255,255,255,.08))!important}
     html[data-theme="light"] .progress-track{border-color:rgba(134,94,31,.10);background:rgba(134,94,31,.08)}html[data-theme="light"] button.cal-day{border-color:rgba(134,94,31,.10);background:rgba(255,255,255,.68)}html[data-theme="light"] button.cal-day:hover{border-color:rgba(166,109,19,.22);background:rgba(255,255,255,.90)}html[data-theme="light"] .cal-day.completed{border-color:rgba(22,137,81,.24);color:#10613c;background:rgba(22,137,81,.10)}html[data-theme="light"] .cal-day.inprogress{border-color:rgba(166,109,19,.24);color:#83550e;background:rgba(166,109,19,.10)}html[data-theme="light"] .cal-day.missed{border-color:rgba(201,63,77,.20);color:#a42c37;background:rgba(201,63,77,.07)}html[data-theme="light"] .filter-btn{border-color:rgba(134,94,31,.12);background:rgba(255,255,255,.64)}html[data-theme="light"] .filter-btn.active{border-color:rgba(166,109,19,.42);color:#231709;background:linear-gradient(135deg,#fff4c7,#d9a947)}html[data-theme="light"] .toast{border-color:rgba(166,109,19,.20);color:#172033;background:rgba(255,255,255,.97);box-shadow:0 18px 52px rgba(86,66,34,.18)}
     @media(max-width:390px){h1{font-size:36px}.board-grid{grid-template-columns:1fr}.day-title{font-size:30px}}
   </style>
@@ -353,7 +354,7 @@
     <section class="calendar-section glass" id="calendarSection">
       <div class="section-title-row">
         <div><h2>Calendar & streaks</h2><p>Click a scheduled date to open its task.</p></div>
-        <div class="legend"><span><i class="dot" style="--dot:var(--green)"></i>Complete</span><span><i class="dot" style="--dot:var(--amber)"></i>In progress</span><span><i class="dot" style="--dot:var(--red)"></i>Missed</span><span><i class="dot" style="--dot:var(--blue)"></i>Today</span></div>
+        <div class="legend" id="calendarLegend"><span><i class="dot" style="--dot:var(--green)"></i>Complete</span><span><i class="dot" style="--dot:var(--amber)"></i>In progress</span><span><i class="dot" style="--dot:var(--red)"></i>Missed</span><span><i class="dot" style="--dot:var(--blue)"></i>Today</span></div>
       </div>
       <div class="months" id="months"></div>
     </section>
@@ -515,6 +516,7 @@
     function renderCalendar(){
       const container=document.getElementById('months');container.innerHTML='';
       const hasStreakStarted=streakStarted();
+      let hasCalendarSignals=false;
       const start=parseISO(state.startDate),end=parseISO(scheduledDate(TASKS.length));
       const monthStarts=[];let cursor=new Date(start.getFullYear(),start.getMonth(),1);
       while(cursor<=end){monthStarts.push(new Date(cursor));cursor=new Date(cursor.getFullYear(),cursor.getMonth()+1,1)}
@@ -530,13 +532,16 @@
           const diff=dayDiff(iso,state.startDate),within=diff>=0&&diff<TASKS.length;
           if(!within){const span=document.createElement('span');span.className='cal-day';span.innerHTML=`<span class="cal-num">${n}</span>`;grid.appendChild(span);continue}
           const id=diff+1,task=TASKS[id-1],day=ensureDay(id),btn=document.createElement('button');btn.className='cal-day';btn.type='button';btn.style.setProperty('--cat-color',categoryColor(task.category));
-          if(day.completed&&day.completedOn)btn.classList.add('completed');else if(activityStarted(id))btn.classList.add('inprogress');else if(hasStreakStarted&&iso<localISO())btn.classList.add('missed');
-          if(iso===localISO())btn.classList.add('today');if(id===state.selectedId)btn.classList.add('selected');
-          btn.innerHTML=`<span class="cal-num">${n}</span><span class="cal-task">Day ${id}</span><i class="cal-cat"></i>`;
+          let status='idle';if(day.completed&&day.completedOn)status='completed';else if(activityStarted(id))status='inprogress';else if(hasStreakStarted&&iso<localISO())status='missed';
+          if(status!=='idle')hasCalendarSignals=true;
+          btn.classList.add(status);
+          if(status!=='idle'&&iso===localISO())btn.classList.add('today');if(status!=='idle'&&id===state.selectedId)btn.classList.add('selected');
+          btn.innerHTML=`<span class="cal-num">${n}</span>${status==='idle'?'':`<span class="cal-task">Day ${id}</span>`}${status==='completed'||status==='inprogress'?'<i class="cal-cat"></i>':''}`;
           btn.title=`Day ${id}: ${task.title}`;btn.addEventListener('click',()=>selectDay(id,true));grid.appendChild(btn);
         }
         card.appendChild(grid);container.appendChild(card);
       });
+      document.getElementById('calendarLegend').classList.toggle('hidden',!hasCalendarSignals);
     }
 
     function renderFilters(){

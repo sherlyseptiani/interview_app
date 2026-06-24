@@ -49,6 +49,11 @@ test("shows one current-month calendar and navigates by month", async ({ page })
   // When / Then
   await expect(page.locator(".month")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: currentMonth })).toBeVisible();
+  await expect(page.locator(".calendar-legend")).toHaveCount(0);
+  await expect(page.locator(".cal-cat")).toHaveCount(0);
+  await expect(page.locator(".cal-task")).toHaveCount(0);
+  await expect(page.locator(".cal-day.today")).toHaveCount(0);
+  await expect(page.locator(".cal-day.selected")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Previous month/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Next month/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Show current month/ })).toBeVisible();

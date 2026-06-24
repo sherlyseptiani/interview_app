@@ -14,7 +14,13 @@ type CalendarSectionProps = Readonly<{
 }>;
 
 function taskDayClass(cell: Extract<CalendarCell, { readonly kind: "task" }>): string {
-  return classNames(["cal-day", statusClass(cell.status), cell.today ? "today" : "", cell.selected ? "selected" : ""]);
+  const hasSignal = cell.status !== "idle";
+  return classNames([
+    "cal-day",
+    hasSignal ? statusClass(cell.status) : "idle",
+    hasSignal && cell.today ? "today" : "",
+    hasSignal && cell.selected ? "selected" : "",
+  ]);
 }
 
 export function CalendarSection({
@@ -28,6 +34,8 @@ export function CalendarSection({
   onCurrentMonth,
   onSelectDay,
 }: CalendarSectionProps) {
+  const hasCalendarSignals = month.cells.some((cell) => cell.kind === "task" && cell.status !== "idle");
+
   return (
     <section className="calendar-section glass" id="calendarSection">
       <div className="section-title-row calendar-title-row">
@@ -41,12 +49,14 @@ export function CalendarSection({
           <button className="icon-btn" type="button" aria-label={nextMonthLabel} title={nextMonthLabel} onClick={onNextMonth}>&gt;</button>
         </div>
       </div>
-      <div className="legend calendar-legend">
-        <span><i className="dot dot-green" />Complete</span>
-        <span><i className="dot dot-amber" />In progress</span>
-        <span><i className="dot dot-red" />Missed</span>
-        <span><i className="dot dot-blue" />Today</span>
-      </div>
+      {hasCalendarSignals ? (
+        <div className="legend calendar-legend">
+          <span><i className="dot dot-green" />Complete</span>
+          <span><i className="dot dot-amber" />In progress</span>
+          <span><i className="dot dot-red" />Missed</span>
+          <span><i className="dot dot-blue" />Today</span>
+        </div>
+      ) : null}
       <div className="months single-months">
         <article className="month" aria-label={`Calendar month ${month.label}`}>
           <h3>{month.label}</h3>
@@ -57,6 +67,8 @@ export function CalendarSection({
               if (cell.kind === "outside") {
                 return <span className="cal-day" key={`${month.monthStartISO}-outside-${cell.dayNumber}`}><span className="cal-num">{cell.dayNumber}</span></span>;
               }
+              const hasSignal = cell.status !== "idle";
+              const showCategoryDot = cell.status === "completed" || cell.status === "inprogress";
               return (
                 <button
                   className={taskDayClass(cell)}
@@ -67,8 +79,8 @@ export function CalendarSection({
                   onClick={() => onSelectDay(cell.id, true)}
                 >
                   <span className="cal-num">{cell.dayNumber}</span>
-                  <span className="cal-task">Day {cell.id}</span>
-                  <i className="cal-cat" style={{ background: categoryColor(cell.category) }} />
+                  {hasSignal ? <span className="cal-task">Day {cell.id}</span> : null}
+                  {showCategoryDot ? <i className="cal-cat" style={{ background: categoryColor(cell.category) }} /> : null}
                 </button>
               );
             })}
