@@ -1,0 +1,17 @@
+{
+  "name": "Sherly's Technical Interview Sprint",
+  "short_name": "Interview Sprint",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#070a12",
+  "description": "42-day technical interview preparation tracker with streaks, notes, checklists, links, and a focus timer.",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
