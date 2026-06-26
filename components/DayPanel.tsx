@@ -1,10 +1,10 @@
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import { TASKS, type InterviewTask } from "../lib/interview-plan";
 import { categoryColor, type DayState } from "../lib/tracker-state";
 import { formatDate } from "./tracker-types";
 
-type NotesFormat = "bold" | "bullet" | "number" | "heading";
+type NotesFormat = "bold" | "bullet" | "number" | "heading" | "newline";
 
 type FormatResult = Readonly<{
   notes: string;
@@ -21,6 +21,7 @@ const NOTES_FORMATS: readonly Readonly<{
   { format: "heading", label: "Heading", marker: "#" },
   { format: "bullet", label: "Bullets", marker: "-" },
   { format: "number", label: "Numbers", marker: "1." },
+  { format: "newline", label: "New line", marker: "NL" },
 ];
 
 function applyBoldFormat(notes: string, selectionStart: number, selectionEnd: number): FormatResult {
@@ -81,9 +82,18 @@ function applyListFormat(notes: string, selectionStart: number, selectionEnd: nu
   };
 }
 
+function applyNewLineFormat(notes: string, selectionStart: number, selectionEnd: number): FormatResult {
+  return {
+    notes: `${notes.slice(0, selectionStart)}\n${notes.slice(selectionEnd)}`,
+    selectionStart: selectionStart + 1,
+    selectionEnd: selectionStart + 1,
+  };
+}
+
 function applyNotesFormat(notes: string, selectionStart: number, selectionEnd: number, format: NotesFormat): FormatResult {
   if (format === "bold") return applyBoldFormat(notes, selectionStart, selectionEnd);
   if (format === "heading") return applyHeadingFormat(notes, selectionStart, selectionEnd);
+  if (format === "newline") return applyNewLineFormat(notes, selectionStart, selectionEnd);
   return applyListFormat(notes, selectionStart, selectionEnd, format);
 }
 
@@ -128,7 +138,7 @@ function headingText(line: string): string | null {
 function NotesPreview({ notes }: Readonly<{ notes: string }>) {
   if (notes.trim().length === 0) {
     return (
-      <div className="notes-preview" aria-label="Formatted notes preview">
+      <div className="notes-preview" id="notesPreview" aria-label="Formatted notes preview">
         <p className="notes-empty">Formatted preview appears here as you write.</p>
       </div>
     );
@@ -183,7 +193,7 @@ function NotesPreview({ notes }: Readonly<{ notes: string }>) {
   flushParagraph();
   flushList();
 
-  return <div className="notes-preview" aria-label="Formatted notes preview">{blocks}</div>;
+  return <div className="notes-preview" id="notesPreview" aria-label="Formatted notes preview">{blocks}</div>;
 }
 
 type DayPanelProps = Readonly<{
@@ -208,6 +218,7 @@ export function DayPanel({
   onNotesChange,
 }: DayPanelProps) {
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const [showNotesPreview, setShowNotesPreview] = useState(false);
 
   const handleNotesFormat = (format: NotesFormat) => {
     const textarea = notesRef.current;
@@ -287,7 +298,7 @@ export function DayPanel({
       <section className="section">
         <div className="section-head">
           <h3>Daily notes</h3>
-          <span className="mini">Markdown-style headings, bold, bullets, and numbering</span>
+          <span className="mini">Markdown-style headings, bold, lists, and line breaks</span>
         </div>
         <div className="notes-toolbar" aria-label="Notes formatting toolbar">
           {NOTES_FORMATS.map((control) => (
@@ -316,7 +327,18 @@ export function DayPanel({
           }}
           onChange={(event) => onNotesChange(event.currentTarget.value)}
         />
-        <NotesPreview notes={day.notes} />
+        <div className="notes-preview-actions">
+          <button
+            className="format-btn notes-toggle"
+            type="button"
+            aria-controls="notesPreview"
+            aria-expanded={showNotesPreview}
+            onClick={() => setShowNotesPreview((current) => !current)}
+          >
+            {showNotesPreview ? "Hide notes" : "Show notes"}
+          </button>
+        </div>
+        {showNotesPreview ? <NotesPreview notes={day.notes} /> : null}
         <div className="autosave">Saved automatically in this browser</div>
       </section>
     </article>

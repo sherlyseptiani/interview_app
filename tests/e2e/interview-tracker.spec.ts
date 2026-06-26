@@ -82,6 +82,9 @@ test("formats daily notes with the toolbar", async ({ page }) => {
   await page.goto("/");
   const notes = page.getByLabel("Daily notes");
   const preview = page.getByLabel("Formatted notes preview");
+  await expect(preview).toHaveCount(0);
+  await page.getByRole("button", { name: "Show notes" }).click();
+  await expect(preview).toBeVisible();
 
   // When
   await notes.fill("Review map invariants");
@@ -100,6 +103,17 @@ test("formats daily notes with the toolbar", async ({ page }) => {
   // Then
   await expect(notes).toHaveValue("# Key takeaway");
   await expect(preview.locator("h4")).toHaveText("Key takeaway");
+
+  // When
+  await notes.fill("First line");
+  await notes.evaluate((element) => {
+    const textarea = element as HTMLTextAreaElement;
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  });
+  await page.getByRole("button", { name: "New line" }).click();
+
+  // Then
+  await expect(notes).toHaveValue("First line\n");
 
   // When
   await notes.fill("capture edge cases\ncompare tradeoffs");

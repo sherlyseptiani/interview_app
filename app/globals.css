@@ -832,6 +832,18 @@ textarea::placeholder { color: var(--faint); }
   background: var(--accent-soft);
 }
 
+.notes-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.notes-toggle {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+
 .notes-preview {
   min-height: 64px;
   margin-top: 12px;
