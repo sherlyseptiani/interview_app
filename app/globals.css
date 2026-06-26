@@ -789,6 +789,93 @@ textarea {
 
 textarea::placeholder { color: var(--faint); }
 
+.notes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.format-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--card-2);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .15s;
+}
+
+.format-btn:hover {
+  border-color: var(--accent-line);
+  color: var(--ink);
+  background: var(--card-solid);
+  transform: translateY(-1px);
+}
+
+.format-marker {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 8px;
+  color: var(--accent);
+  font-family: var(--font-utility);
+  font-size: 11px;
+  background: var(--accent-soft);
+}
+
+.notes-preview {
+  min-height: 64px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  background: var(--inset);
+}
+
+.notes-preview p,
+.notes-preview ul,
+.notes-preview ol,
+.notes-preview h4 { margin: 0; }
+
+.notes-preview > * + * { margin-top: 10px; }
+
+.notes-preview ul,
+.notes-preview ol { padding-left: 20px; }
+
+.notes-preview li + li { margin-top: 5px; }
+
+.notes-preview strong {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.notes-preview h4 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+
+.notes-empty {
+  color: var(--soft);
+  font-family: var(--font-utility);
+  font-size: 11.5px;
+}
+
 .autosave {
   display: flex;
   align-items: center;
@@ -1372,6 +1459,7 @@ html[data-theme="dark"] .check-row.done { background: rgba(13, 148, 136, .12); }
 html[data-theme="dark"] .check-text { color: #d7dcf0; }
 html[data-theme="dark"] .check-row.done .check-text { color: var(--soft); }
 html[data-theme="dark"] .tips ul { color: #c4cae0; }
+html[data-theme="dark"] .notes-preview { background: rgba(10, 12, 24, .38); }
 
 html[data-theme="dark"] .timer-ring {
   background: conic-gradient(from -90deg, #818cf8, #a78bfa 40%, #22d3ee var(--timer-progress), rgba(255, 255, 255, .06) 0);

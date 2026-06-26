@@ -77,6 +77,49 @@ test("shows one current-month calendar and navigates by month", async ({ page })
   await expect(page.getByRole("heading", { name: currentMonth })).toBeVisible();
 });
 
+test("formats daily notes with the toolbar", async ({ page }) => {
+  // Given
+  await page.goto("/");
+  const notes = page.getByLabel("Daily notes");
+  const preview = page.getByLabel("Formatted notes preview");
+
+  // When
+  await notes.fill("Review map invariants");
+  await notes.selectText();
+  await page.getByRole("button", { name: "Bold" }).click();
+
+  // Then
+  await expect(notes).toHaveValue("**Review map invariants**");
+  await expect(preview.locator("strong")).toHaveText("Review map invariants");
+
+  // When
+  await notes.fill("Key takeaway");
+  await notes.selectText();
+  await page.getByRole("button", { name: "Heading" }).click();
+
+  // Then
+  await expect(notes).toHaveValue("# Key takeaway");
+  await expect(preview.locator("h4")).toHaveText("Key takeaway");
+
+  // When
+  await notes.fill("capture edge cases\ncompare tradeoffs");
+  await notes.selectText();
+  await page.getByRole("button", { name: "Bullets" }).click();
+
+  // Then
+  await expect(notes).toHaveValue("- capture edge cases\n- compare tradeoffs");
+  await expect(preview.locator("ul li")).toHaveText(["capture edge cases", "compare tradeoffs"]);
+
+  // When
+  await notes.fill("state approach\nexplain complexity");
+  await notes.selectText();
+  await page.getByRole("button", { name: "Numbers" }).click();
+
+  // Then
+  await expect(notes).toHaveValue("1. state approach\n2. explain complexity");
+  await expect(preview.locator("ol li")).toHaveText(["state approach", "explain complexity"]);
+});
+
 test("keeps resource links hidden for tasks without resources", async ({ page }) => {
   // Given
   await page.goto("/");
