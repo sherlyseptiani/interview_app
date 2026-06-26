@@ -3,6 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { parseStoragePayload } from "../../../lib/storage-schema";
 import { initialState } from "../../../lib/tracker-state";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const DEFAULT_PROGRESS_ID = "default";
 const DEFAULT_TABLE = "interview_tracker_progress";
 const TABLE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -40,10 +43,18 @@ function progressUpsertUrl(config: SupabaseConfig): string {
   return `${config.url}/rest/v1/${config.table}?on_conflict=id`;
 }
 
+function progressJson(body: unknown, init: ResponseInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  headers.set("Pragma", "no-cache");
+  headers.set("Expires", "0");
+  return NextResponse.json(body, { ...init, headers });
+}
+
 export async function GET() {
   const config = supabaseConfig();
   if (config === null) {
-    return NextResponse.json({ configured: false, state: initialState() });
+    return progressJson({ configured: false, state: initialState() });
   }
 
   const response = await supabaseFetch(progressSelectUrl(config), {
@@ -51,17 +62,17 @@ export async function GET() {
     cache: "no-store",
   });
   if (response === null) {
-    return NextResponse.json({ configured: true, error: "Supabase read failed", state: initialState() }, { status: 502 });
+    return progressJson({ configured: true, error: "Supabase read failed", state: initialState() }, { status: 502 });
   }
   if (!response.ok) {
-    return NextResponse.json({ configured: true, error: "Supabase read failed", state: initialState() }, { status: 502 });
+    return progressJson({ configured: true, error: "Supabase read failed", state: initialState() }, { status: 502 });
   }
 
   const rows: unknown = await response.json();
   const row = Array.isArray(rows) ? rows[0] : undefined;
   const state = typeof row === "object" && row !== null && "state" in row ? row.state : initialState();
   const parsed = parseStoragePayload(state);
-  return NextResponse.json({ configured: true, state: parsed.ok ? parsed.state : initialState() });
+  return progressJson({ configured: true, state: parsed.ok ? parsed.state : initialState() });
 }
 
 export async function POST(request: NextRequest) {
@@ -75,16 +86,16 @@ export async function PUT(request: NextRequest) {
 async function saveProgress(request: NextRequest) {
   const config = supabaseConfig();
   if (config === null) {
-    return NextResponse.json({ configured: false, ok: false });
+    return progressJson({ configured: false, error: "Supabase is not configured", ok: false }, { status: 503 });
   }
 
   const payload = await parseRequestJson(request);
   if (!payload.ok) {
-    return NextResponse.json({ error: "Invalid JSON", ok: false }, { status: 400 });
+    return progressJson({ error: "Invalid JSON", ok: false }, { status: 400 });
   }
   const parsed = parseStoragePayload(payload.value);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error.message, ok: false }, { status: 400 });
+    return progressJson({ error: parsed.error.message, ok: false }, { status: 400 });
   }
 
   const response = await supabaseFetch(progressUpsertUrl(config), {
@@ -96,13 +107,13 @@ async function saveProgress(request: NextRequest) {
     body: JSON.stringify({ id: config.progressId, state: parsed.state, updated_at: new Date().toISOString() }),
   });
   if (response === null) {
-    return NextResponse.json({ configured: true, error: "Supabase save failed", ok: false }, { status: 502 });
+    return progressJson({ configured: true, error: "Supabase save failed", ok: false }, { status: 502 });
   }
   if (!response.ok) {
-    return NextResponse.json({ configured: true, error: "Supabase save failed", ok: false }, { status: 502 });
+    return progressJson({ configured: true, error: "Supabase save failed", ok: false }, { status: 502 });
   }
 
-  return NextResponse.json({ configured: true, ok: true });
+  return progressJson({ configured: true, ok: true });
 }
 
 async function supabaseFetch(url: string, init: RequestInit): Promise<Response | null> {

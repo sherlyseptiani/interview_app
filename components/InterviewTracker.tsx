@@ -86,6 +86,7 @@ export function InterviewTracker() {
   const autosaveTimerRef = useRef<number | null>(null);
   const confettiTimerRef = useRef<number | null>(null);
   const confettiIdRef = useRef(1);
+  const persistenceConfiguredRef = useRef(true);
   const pendingSaveRef = useRef<TrackerState | null>(null);
   const saveInFlightRef = useRef(false);
 
@@ -98,6 +99,7 @@ export function InterviewTracker() {
   }, []);
 
   const queueProgressSave = useCallback((nextState: TrackerState) => {
+    if (!persistenceConfiguredRef.current) return;
     pendingSaveRef.current = nextState;
     if (saveInFlightRef.current) return;
     saveInFlightRef.current = true;
@@ -135,6 +137,7 @@ export function InterviewTracker() {
       void (async () => {
         const stored = await loadProgressState();
         if (cancelled) return;
+        persistenceConfiguredRef.current = stored.configured;
         stateRef.current = stored.state;
         setState(stored.state);
         setNowMs(Date.now());
@@ -165,6 +168,7 @@ export function InterviewTracker() {
 
   useEffect(() => {
     const saveBeforeUnload = () => {
+      if (!persistenceConfiguredRef.current) return;
       if (!sendProgressBeacon(stateRef.current)) void saveProgressState(stateRef.current);
     };
     window.addEventListener("beforeunload", saveBeforeUnload);
